@@ -1,0 +1,304 @@
+" =========================================
+" => General settings 
+" =========================================
+set nocp                                         " Not compatible for vi
+set nu                                           " Line number
+set acd                                          " Auto change to the current directory
+set wmnu                                         " Auto complete of vim command-line
+set wildmode=longest,list,full                   " Auto complete of vim command-line
+set incsearch                                    " Increase search
+set ruler                                        " Show position of cursor at status line
+syntax on                                        " Syntex highlighting
+au BufEnter * silent! lcd %:p:h                  " Autochdir
+set backspace=2                                  " Allow backspace in insert mode
+set vb                                           " No beep
+set shiftwidth=2 tabstop=2                       " Shorter spaces
+
+"set ch=2                                         " Make command line two lines high 
+if has('mouse')                                  " enable mouse
+  set mouse=a
+  set mousehide                                  " Hide the mouse when typing text
+endif
+
+" Auto indent
+if has('autocmd')
+  filetype plugin indent on
+endif
+
+set autoindent                                   " Copy indent
+set smartindent                                  " Smart indent
+set smarttab                                     " Smart table
+set expandtab                                    " Use space for tab
+set wrap lbr tw=0 wm=0 nolist                    " Set wrap, list disables line break
+set guioptions=aAce                              " Remove menu/tool bar/scroll bar
+set clipboard=unnamed                            " Share clipboard 
+set fenc=utf-8                                   " Encoding for file
+
+" Set spell check, check language = us
+set spell
+setlocal spell
+set spelllang=en_us
+inoremap <C-l> <c-g>u<Esc>[s1z=`]a<c-g>u
+
+" Encoding for file's content
+" If you want gvim under windws prompt
+" callback of shell command correctly
+" you need the following settings:
+" set enc=chinese
+set enc=utf-8
+scriptencoding utf-8
+
+set termencoding=utf-8                           " Encoding for term
+" Supported encoding {{{
+set fencs=usc-bom,
+      \utf-8,
+      \chinese,
+      \cp936,
+      \gb18030,
+      \big5,
+      \euc-jp,
+      \euc-kr,
+      \latin1
+" }}}
+set ff=dos                                      " file encoding have to be setted to dos on windows, otherwise may fail of \ref and \cite
+set ffs=dos,mac,unix                            " auto detect mac,unix,dos
+language messages zh_CN.utf-8                   " Vim message encoding
+
+set imcmdline                                   " input Chines in gvim
+set langmenu=zh_CN.utf-8
+source $VIMRUNTIME/delmenu.vim                  " place to the back of all encoding settings, otherwise may fail
+source $VIMRUNTIME/menu.vim                     " place to the back of all encoding settings, otherwise may fail
+
+
+" ========================================
+" => User functions 
+" =========================================
+" Toggle Verbose mode
+function! ToggleVerbose()
+  if !&verbose
+    set verbosefile=~/desktop/vimtex.log
+    set verbose=15
+  else
+    set verbose=0
+    set verbosefile=
+  endif
+endfunction
+
+" TeX live preiview 
+fu! TexLivePreview()
+  if filewritable( bufname( '%' ) )
+    silent update %
+  endif
+endfu
+au CursorHoldI,CursorHold *.tex call TexLivePreview()
+
+" =========================================
+" => User variables
+" =========================================
+let $USRVIMD=$HOME.'/.vim/myvim/'
+let $USRPLUGD=$USRVIMD.'plugged/'
+let $USRTEMPD=$USRVIMD.'vimtemp/'
+let $LASTWKDR=$USRVIMD.'sessions/'
+
+" =========================================
+" => Plugins
+" =========================================
+call plug#begin( $USRPLUGD )
+Plug 'scrooloose/nerdtree'
+Plug 'lervag/vimtex'                               " for latex
+Plug 'vim-airline/vim-airline'                     " for powerline
+Plug 'vim-airline/vim-airline-themes'
+Plug 'altercation/vim-colors-solarized'            " for soloarlized
+Plug 'Sirver/ultisnips'                            " for snipets
+Plug 'honza/vim-snippets'                          
+Plug 'neoclide/coc.nvim', {'tag': '*', 'do': { -> coc#util#install()}} " for \ref and \cite
+call plug#end()
+
+" nerdtree configuration
+if isdirectory( $USRPLUGD . 'nerdtree' )
+  map <F2> :NERDTreeToggle<CR>
+  autocmd bufenter * if (winnr("$") == 1 && exists("b:NERDTreeType") &&b:NERDTreeType == "primary") | q | endif
+  autocmd vimenter * NERDTree
+endif
+
+" Vimtex configuration
+if isdirectory( $USRPLUGD . 'vimtex' )
+  let g:tex_flavor = "latex"
+  let g:vimtex_quickfix_open_on_warning = 0
+  let g:vimtex_quickfix_mode = 2
+  " the following two lines con­fig­ure the con­ceal­ment
+  set conceallevel=1
+  let g:tex_conceal='abdmg'
+
+  let g:vimtex_compiler_latexmk_engines = {'-' : '-pdfdvi'}                       " or {'-' : '-xelatex'}
+  let g:vimtex_compiler_method='latexmk'
+  let g:vimtex_compiler_progname='/Applications/MacVim.app/Contents/bin/mvim'     " inverse search target program
+
+  " Full path is needed, otherwise will "start Preveiw"
+  let g:vimtex_view_general_viewer='/Applications/Skim.app/Contents/SharedSupport/displayline'   
+  let g:vimtex_view_method="skim"       
+  let g:vimtex_view_skim_activate=0                                               " 1 make Skim have focus
+  let g:vimtex_view_skim_reading_bar=1                                            " 1 to highlight current line in PDF
+  let g:vimtex_view_general_options='-r @line @pdf @tex'
+
+  " This adds a callback hook that updates Skim after compilation, 
+  " !!! This functon enabled the forward search automatically.
+  " if the forward search function is not necessary for you, comment it
+  let g:vimtex_compiler_callback_hooks = ['UpdateSkim']                          
+  function! UpdateSkim(status)
+    if !a:status | return | endif
+  
+    let l:out = b:vimtex.out()
+    let l:tex = expand('%:p')
+    let l:cmd = [g:vimtex_view_general_viewer, '-r']
+    if !empty(system('pgrep Skim'))
+      call extend(l:cmd, ['-g'])
+    endif
+    if has('nvim')
+      call jobstart(l:cmd + [line('.'), l:out, l:tex])
+    elseif has('job')
+      call job_start(l:cmd + [line('.'), l:out, l:tex])
+    else
+      call system(join(l:cmd + [line('.'), shellescape(l:out), shellescape(l:tex)], ' '))
+    endif
+  endfunction
+
+  " Can hide specifc warning messages from the quickfix window
+  let g:vimtex_quickfix_latexlog = {
+            \ 'default' : 1,
+            \ 'fix_paths' : 0,
+            \ 'general' : 1,
+            \ 'references' : 1,
+            \ 'overfull' : 1,
+            \ 'underfull' : 1,
+            \ 'font' : 1,
+            \ 'packages' : {
+            \   'default' : 1,
+            \   'natbib' : 1,
+            \   'biblatex' : 1,
+            \   'babel' : 1,
+            \   'hyperref' : 1,
+            \   'scrreprt' : 1,
+            \   'fixltx2e' : 1,
+            \   'titlesec' : 1,
+            \ },
+            \}
+endif
+
+" Airline configuration 
+if isdirectory( $USRPLUGD . 'vim-airline' )
+  let g:airline_powerline_fonts = 1
+  let g:airline#extensions#tabline#enabled = 1
+  let g:airline#extensions#tabline#buffer_nr_show = 1
+  let g:airline#extensions#whitespace#enabled = 1  
+  let g:airline_theme='powerlineish'
+  "let g:Powerline_symbols= 'fancy'                              " avoid error code
+  "
+  if !exists('g:airline_symbols')
+    let g:airline_symbols = {}
+  endif
+
+  " unicode symbols
+  let g:airline_left_sep = '»'
+  let g:airline_left_sep = '▶'
+  let g:airline_right_sep = '«'
+  let g:airline_right_sep = '◀'
+  let g:airline_symbols.crypt = '🔒'
+  let g:airline_symbols.linenr = '☰'
+  let g:airline_symbols.linenr = '␊'
+  let g:airline_symbols.linenr = '␤'
+  let g:airline_symbols.linenr = '¶'
+  let g:airline_symbols.maxlinenr = ''
+  let g:airline_symbols.maxlinenr = '㏑'
+  let g:airline_symbols.branch = '⎇'
+  let g:airline_symbols.paste = 'ρ'
+  let g:airline_symbols.paste = 'Þ'
+  let g:airline_symbols.paste = '∥'
+  let g:airline_symbols.spell = 'SPELL'
+  let g:airline_symbols.notexists = '∄'
+  let g:airline_symbols.whitespace = 'Ξ'
+  set guifont=DejaVu\ Sans\ Mono\ for\ Powerline:h12    " the gui font
+endif
+
+" Solarized configuration
+if isdirectory( $USRPLUGD . 'vim-colors-solarized' )
+  let g:solarized_termcolors=256
+  let g:solarized_termtrans=1
+  set t_Co=256
+  syntax enable
+  if has('gui_running')
+    set bg=light
+  else
+    set   bg=dark
+  endif
+  colo solarized
+endif
+
+" Ultisnips configuration
+if isdirectory( $USRPLUGD . 'ultisnips' )
+  set rtp -=$USRPLUGD.'ultisnips'                                   " Add ultisnips plugin dir to path
+  if isdirectory( $USRVIMD )
+    set rtp +=$USRVIMD                                              " Add snippets dir to rtp
+    set rtp +=$USRVIMD.current_course                               " Add current_course dir to rtp
+  endif
+  
+  if isdirectory( $USRVIMD )
+    let g:UltiSnipsSnippetsDir = $USRVIMD. 'UltiSnips'              " Set snippet search dir
+    inoremap <c-x><c-k> <c-x><c-k>                                  " Disable build-in i_CTRL-X_CTRL-K
+  endif
+  let g:UltiSnipsExpandTrigger = '<tab>'                            " Set snippet triggers
+  let g:UltiSnipsJumpForwardTrigger = '<tab>'
+  let g:UltiSnipsJumpBackwardTrigger = '<s-tab>'
+
+  let g:UltiSnipsUsePythonVersion = 3
+  let g:UltiSnipsEditSplit='vertical'                               " vertically split screen
+endif
+
+" coc.nvim completion for ref and cite
+if isdirectory( $USRPLUGD . 'coc.nvim')
+  let g:vimtex_complete_close_braces = 1
+  let g:vimtex_complete_recursive_bib = 1                           " multifiles have to be enable
+  "let g:vimtex_complete_bib_simple = 1                             " default 0, if nonzero, search keys only
+  
+  " for coc languge server
+  "let g:coc_filetype_map = {
+  "\ 'tex': 'latext',
+  "\ 'plaintex': 'tex',
+  "\ }
+
+endif
+
+" =========================================
+" => User keymaps
+" =========================================
+vnoremap ;x "*y                                                     " copy to clipboard
+vnoremap ;p "*p                                                     " past from clipboard
+nnoremap ;m :VimtexImapsList<cr>                                    " show math short key
+nnoremap ;r :VimtexReload<cr>                                       " reload vimtex
+nnoremap ;n :VimtexClean<cr>                                        " clean call of vimtex
+nnoremap ;c :VimtexCompile<cr>                                      " execute call of vimtex
+nnoremap ;v :VimtexView<cr>                                         " preview
+nnoremap <2-LeftMouse>  :VimtexView<cr>                             " double mouse click forwoard search in preview
+nnoremap ;e :VimtexErrors<cr>                                       " toggle of errors
+nnoremap ;t :VimtexTocToggle<cr>                                    " toggle table of topic
+nnoremap nw <c-w><c-w>                                              " next window
+" =========================================
+" => Auto cmd
+" =========================================
+au! BufWritePost $MYVIMRC source $MYVIMRC                           "Automatical source vimrc on write 
+au! BufEnter *.md set ft=tex                                        "Auto change markdown file to tex fileformat
+
+" Go to last file(s) if invoked without arguments.
+set ssop-=options
+set ssop-=terminal
+set ssop-=help
+set ssop+=winpos
+set ssop+=resize
+autocmd VimLeave * nested if (!isdirectory($LASTWKDR)) |
+      \ call mkdir($LASTWKDR) |
+      \ endif |
+      \ execute "mksession! " . $LASTWKDR . "Session.vim"
+
+autocmd VimEnter * nested if argc() == 0 && filereadable($LASTWKDR . "Session.vim") |
+      \ execute "source " . $LASTWKDR. "Session.vim"
+
