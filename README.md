@@ -11,7 +11,7 @@
  - brew install ctags
  - add '~/.ctags.d/default.ctags': 
  ```bash
- 	--langdef=tex2
+	--langdef=tex2
 	--langmap=tex2:.tex
 	--regex-tex2=/\\label[ \t]*\*?\{[ \t]*([^}]*)\}/\1/l,label/
 	--langdef=bib
