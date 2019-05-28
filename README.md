@@ -34,7 +34,7 @@
  ```bash
  sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -target /
  ```
- -  add in .bash_profile
+ -  In file .bash_profile, add a line
  ```bash
  eval "$(perl -I$HOME/.perl5/lib/perl5 -Mlocal::lib=$HOME/.perl5)"
  ```
